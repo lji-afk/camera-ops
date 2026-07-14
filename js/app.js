@@ -97,7 +97,8 @@ function formatDate(iso) {
 const toast = {
   show(msg, type, duration) {
     if (!type) type = '';
-    if (!duration) duration = 2500;
+    if (duration === 0) duration = 0;
+    else if (!duration) duration = 2500;
     const el = document.createElement('div');
     el.className = `toast ${type}`;
     el.textContent = msg;
@@ -418,18 +419,35 @@ function readFileAsDataURL(file, maxWidth) {
 function getCurrentPosition() {
   return new Promise((resolve) => {
     if (!navigator.geolocation) {
-      toast.warning('当前设备不支持GPS定位');
+      toast.warning('\u5f53\u524d\u8bbe\u5907\u4e0d\u652f\u6301GPS\u5b9a\u4f4d');
       resolve(null);
       return;
     }
+    // \u7b2c\u4e00\u6b21\uff1a\u9ad8\u7cbe\u5ea6\uff08GPS\uff09\uff0c30\u79d2\u8d85\u65f6
     navigator.geolocation.getCurrentPosition(
-      (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-      (err) => {
-        console.warn('GPS error:', err.message);
-        toast.warning('定位失败：' + err.message);
-        resolve(null);
+      function(pos) {
+        resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude });
       },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+      function(err) {
+        console.warn('High-accuracy GPS failed:', err.message);
+        // \u7b2c\u4e8c\u6b21\uff1a\u964d\u7ea7\u5230\u4f4e\u7cbe\u5ea6\uff08WiFi/\u57fa\u7ad9\uff09\uff0c15\u79d2\u8d85\u65f6
+        navigator.geolocation.getCurrentPosition(
+          function(pos) {
+            resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+          },
+          function(err2) {
+            console.warn('Low-accuracy failed:', err2.message);
+            var msg = '\u5b9a\u4f4d\u5931\u8d25';
+            if (err2.code === 1) msg = '\u5b9a\u4f4d\u6743\u9650\u88ab\u62d2\u7edd\uff0c\u8bf7\u5728\u624b\u673a\u8bbe\u7f6e\u4e2d\u5141\u8bb8\u6d4f\u89c8\u5668\u83b7\u53d6\u4f4d\u7f6e';
+            else if (err2.code === 2) msg = '\u5b9a\u4f4d\u4fe1\u53f7\u65e0\u6cd5\u83b7\u53d6\uff0c\u8bf7\u786e\u8ba4\u5f00\u542f\u624b\u673aGPS\u548c\u7f51\u7edc';
+            else if (err2.code === 3) msg = '\u5b9a\u4f4d\u8d85\u65f6\uff0c\u8bf7\u79fb\u81f3\u5ba4\u5916\u6216\u5f00\u542f\u7f51\u7edc\u5b9a\u4f4d';
+            toast.warning(msg);
+            resolve(null);
+          },
+          { enableHighAccuracy: false, timeout: 15000, maximumAge: 120000 }
+        );
+      },
+      { enableHighAccuracy: true, timeout: 30000, maximumAge: 60000 }
     );
   });
 }
@@ -520,7 +538,7 @@ async function renderAdd(container, editId) {
     '<input type="number" step="0.000001" class="form-control" id="latitude" placeholder="\u7eac\u5ea6" value="' + (r.latitude ?? '') + '" style="flex:1;">' +
     '<input type="number" step="0.000001" class="form-control" id="longitude" placeholder="\u7ecf\u5ea6" value="' + (r.longitude ?? '') + '" style="flex:1;">' +
     '</div>' +
-    '<button type="button" class="btn btn-outline" style="margin-top:6px;font-size:12px;padding:8px;" onclick="getLocation()">' +
+    '<button type="button" id="getLocationBtn" class="btn btn-outline" style="margin-top:6px;font-size:12px;padding:8px;" onclick="getLocation()">' +
     '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>\u83b7\u53d6\u5f53\u524d\u5b9a\u4f4d' +
     '</button></div></div>' +
     /* 光猫 */
@@ -672,11 +690,24 @@ function handleClearPhoto(fieldName) {
 }
 
 async function getLocation() {
-  const pos = await getCurrentPosition();
-  if (pos) {
-    document.getElementById('latitude').value = pos.lat.toFixed(6);
-    document.getElementById('longitude').value = pos.lng.toFixed(6);
-    toast.success('\u5b9a\u4f4d\u83b7\u53d6\u6210\u529f');
+  var btn = document.getElementById('getLocationBtn');
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<div class="spinner" style="width:14px;height:14px;border-width:2px;"></div> \u5b9a\u4f4d\u4e2d...';
+  }
+  toast.show('\u6b63\u5728\u83b7\u53d6\u5b9a\u4f4d\uff0c\u8bf7\u786e\u4fdd\u5f00\u542f\u624b\u673aGPS...', 'info', 0);
+  try {
+    var pos = await getCurrentPosition();
+    if (pos) {
+      document.getElementById('latitude').value = pos.lat.toFixed(6);
+      document.getElementById('longitude').value = pos.lng.toFixed(6);
+      toast.success('\u5b9a\u4f4d\u83b7\u53d6\u6210\u529f');
+    }
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>\u83b7\u53d6\u5f53\u524d\u5b9a\u4f4d';
+    }
   }
 }
 
