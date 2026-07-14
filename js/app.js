@@ -172,6 +172,60 @@ const router = {
   }
 };
 
+
+/* ========== 条码扫码 ========== */
+const barcodeScanner = {
+  _scanner: null,
+  _targetInputId: null,
+
+  async start(targetInputId) {
+    if (!targetInputId) {
+      toast.warning('\u8be5\u7167\u7247\u4e0d\u652f\u6301\u626b\u7801\u8bc6\u522b');
+      return;
+    }
+    var self = this;
+    this._targetInputId = targetInputId;
+    if (typeof Html5Qrcode === 'undefined') {
+      toast.error('扫码库未加载，请检查网络');
+      return;
+    }
+    document.getElementById('scannerOverlay').classList.add('open');
+
+    try {
+      this._scanner = new Html5Qrcode('scannerContainer');
+      await this._scanner.start(
+        { facingMode: 'environment' },
+        { fps: 10, qrbox: { width: 250, height: 150 } },
+        function(decodedText) {
+          // Success - fill the input and close
+          var input = document.getElementById(self._targetInputId);
+          if (input) {
+            input.value = decodedText;
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+          }
+          toast.success('扫码成功: ' + decodedText);
+          self.close();
+        },
+        function() { /* ignore scan errors */ }
+      );
+    } catch (e) {
+      console.error('Scanner error:', e);
+      toast.error('无法启动摄像头，请检查权限');
+      document.getElementById('scannerOverlay').classList.remove('open');
+    }
+  },
+
+  async close() {
+    if (this._scanner) {
+      try { await this._scanner.stop(); } catch (e) {}
+      this._scanner = null;
+    }
+    this._targetInputId = null;
+    document.getElementById('scannerOverlay').classList.remove('open');
+  }
+};
+
+
 /* ========== OCR 识别模块 ========== */
 const ocr = {
   _worker: null,
@@ -453,7 +507,7 @@ async function renderAdd(container, editId) {
     /* 摄像头 */
     '<div class="card">' +
     '<div class="card-title"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>\u6444\u50cf\u5934\u4fe1\u606f</div>' +
-    '<div class="form-group"><label>\u6444\u50cf\u5934\u7167\u7247</label>' + renderPhotoUpload('cameraPhoto', r.cameraPhoto, '\u6444\u50cf\u5934\u673a\u8eab/\u6807\u7b7e\u7167\u7247') + '</div>' +
+    '<div class="form-group"><label>\u6444\u50cf\u5934\u7167\u7247</label>' + renderPhotoUpload('cameraPhoto', r.cameraPhoto, '\u6444\u50cf\u5934\u673a\u8eab/\u6807\u7b7e\u7167\u7247', 'cameraSN') + '</div>' +
     '<div class="form-group"><label>\u6444\u50cf\u5934SN\u7801</label><div class="hint">\u70b9\u51fb\u4e0b\u65b9\u300c\u8bc6\u522b\u300d\u6309\u94ae\u81ea\u52a8\u4ece\u7167\u7247\u63d0\u53d6</div>' +
     '<input type="text" class="form-control" id="cameraSN" placeholder="\u6444\u50cf\u5934SN\u7801" value="' + escHtml(r.cameraSN || '') + '"></div>' +
     '</div>' +
@@ -472,14 +526,14 @@ async function renderAdd(container, editId) {
     /* 光猫 */
     '<div class="card">' +
     '<div class="card-title"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>\u5149\u732b\u4fe1\u606f</div>' +
-    '<div class="form-group"><label>\u5149\u732b\u6807\u7b7e\u7167\u7247</label>' + renderPhotoUpload('ontPhoto', r.ontPhoto, '\u5149\u732b\u673a\u8eab\u6807\u7b7e\u7167\u7247') + '</div>' +
+    '<div class="form-group"><label>\u5149\u732b\u6807\u7b7e\u7167\u7247</label>' + renderPhotoUpload('ontPhoto', r.ontPhoto, '\u5149\u732b\u673a\u8eab\u6807\u7b7e\u7167\u7247', 'ontSN') + '</div>' +
     '<div class="form-group"><label>\u5149\u732bSN\u7801</label><input type="text" class="form-control" id="ontSN" placeholder="\u5149\u732bSN\u7801" value="' + escHtml(r.ontSN || '') + '"></div>' +
     '<div class="form-group"><label>\u5bbd\u5e26\u8d26\u53f7</label><input type="text" class="form-control" id="broadbandAccount" placeholder="\u5bbd\u5e26\u8d26\u53f7" value="' + escHtml(r.broadbandAccount || '') + '"></div>' +
     '</div>' +
     /* 机箱 */
     '<div class="card">' +
     '<div class="card-title"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>\u673a\u7bb1\u4fe1\u606f</div>' +
-    '<div class="form-group"><label>\u673a\u7bb1\u7167\u7247</label>' + renderPhotoUpload('cabinetPhoto', r.cabinetPhoto, '\u673a\u7bb1\u5916\u89c2/\u6807\u7b7e\u7167\u7247') + '</div>' +
+    '<div class="form-group"><label>\u673a\u7bb1\u7167\u7247</label>' + renderPhotoUpload('cabinetPhoto', r.cabinetPhoto, '\u673a\u7bb1\u5916\u89c2/\u6807\u7b7e\u7167\u7247', 'cabinetCode') + '</div>' +
     '<div class="form-group"><label>\u673a\u7bb1\u7f16\u7801</label><input type="text" class="form-control" id="cabinetCode" placeholder="\u673a\u7bb1\u7f16\u7801" value="' + escHtml(r.cabinetCode || '') + '"></div>' +
     '</div>' +
     /* 备注 */
@@ -535,7 +589,7 @@ async function renderAdd(container, editId) {
   });
 }
 
-function renderPhotoUpload(fieldName, existingDataUrl, hint) {
+function renderPhotoUpload(fieldName, existingDataUrl, hint, scanTarget) {
   const hasPhoto = !!existingDataUrl;
   function iconSvg() {
     return '<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>';
@@ -549,6 +603,7 @@ function renderPhotoUpload(fieldName, existingDataUrl, hint) {
     '</div>' +
     '<div class="photo-actions">' +
     '<button type="button" onclick="handleClearPhoto(\'' + fieldName + '\')">\u6e05\u9664</button>' +
+    (scanTarget ? '<button type="button" class="scan-btn" onclick="barcodeScanner.start(\'" + scanTarget + "\')">\u626b\u7801</button>' : '') +
     '<button type="button" class="ocr-btn" onclick="handleOCR(\'' + fieldName + '\')" id="ocr-' + fieldName + '">\u8bc6\u522b\u6587\u5b57</button>' +
     '</div>' +
     '<div class="ocr-loading" id="ocr-loading-' + fieldName + '">' +

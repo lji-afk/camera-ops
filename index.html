@@ -11,6 +11,9 @@
 <meta name="theme-color" content="#2563eb">
 <title>摄像头运维数据采集</title>
 <!-- Tesseract.js OCR -->
+<!-- html5-qrcode for barcode scanning -->
+<script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/minified/html5-qrcode.min.js"></script>
+<!-- Tesseract.js OCR -->
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <!-- SheetJS for Excel export -->
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -80,6 +83,25 @@ if ("serviceWorker" in navigator) {
     </button>
     <img id="viewerImage" src="" alt="全屏预览">
     <div class="viewer-counter" id="viewerCounter"></div>
+  </div>
+</div>
+
+
+<!-- 扫码界面 -->
+<div id="scannerOverlay" class="scanner-overlay">
+  <div class="scanner-header">
+    <button class="nav-btn" onclick="barcodeScanner.close()">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15,18 9,12 15,6"/></svg>
+    </button>
+    <h1>扫码识别</h1>
+    <div style="width:36px;"></div>
+  </div>
+  <div class="scanner-body">
+    <div id="scannerContainer"></div>
+    <div class="scanner-guide">
+      <div class="scanner-frame"></div>
+      <p class="scanner-hint">将条码对准框内自动识别</p>
+    </div>
   </div>
 </div>
 
