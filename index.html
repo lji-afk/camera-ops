@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📹</text></svg>">
+<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📹</text></svg>">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#2563eb">
+<title>摄像头运维数据采集</title>
+<!-- Tesseract.js OCR -->
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<!-- SheetJS for Excel export -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<!-- Leaflet for map display -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div id="app">
+  <!-- 顶部导航栏 -->
+  <header id="appHeader">
+    <button id="navBack" class="nav-btn" style="display:none;" onclick="router.back()">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15,18 9,12 15,6"/></svg>
+    </button>
+    <h1 id="appTitle">摄像头运维采集</h1>
+    <div id="headerActions"></div>
+  </header>
+
+  <!-- 主内容区域 -->
+  <main id="mainContent"></main>
+
+  <!-- 底部导航 -->
+  <nav id="bottomNav">
+    <button class="tab-btn active" data-page="list" onclick="router.go('list')">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+      <span>记录</span>
+    </button>
+    <button class="tab-btn" data-page="add" onclick="router.go('add')">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+      <span>新增</span>
+    </button>
+    <button class="tab-btn" data-page="export" onclick="router.go('export')">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      <span>导出</span>
+    </button>
+  </nav>
+</div>
+
+<!-- 模态框 -->
+<div id="modalOverlay" class="modal-overlay" onclick="modal.close()">
+  <div class="modal-content" onclick="event.stopPropagation()">
+    <div id="modalBody"></div>
+  </div>
+</div>
+
+<!-- Toast 通知 -->
+<div id="toastContainer"></div>
+
+<script>
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("/sw.js").catch(function() {});
+}
+</script>
+<script src="js/app.js"></script>
+
+<!-- 全屏图片查看器 -->
+<div id="imageViewerOverlay" class="image-viewer-overlay" onclick="closeImageViewer()">
+  <div class="image-viewer-content" onclick="event.stopPropagation()">
+    <button class="viewer-close" onclick="closeImageViewer()">&times;</button>
+    <button class="viewer-nav viewer-prev" id="viewerPrevBtn" onclick="prevImage()">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15,18 9,12 15,6"/></svg>
+    </button>
+    <button class="viewer-nav viewer-next" id="viewerNextBtn" onclick="nextImage()">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9,18 15,12 9,6"/></svg>
+    </button>
+    <img id="viewerImage" src="" alt="全屏预览">
+    <div class="viewer-counter" id="viewerCounter"></div>
+  </div>
+</div>
+
+</body>
+</html>
