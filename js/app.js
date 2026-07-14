@@ -181,7 +181,7 @@ const barcodeScanner = {
 
   async start(targetInputId) {
     if (!targetInputId) {
-      toast.warning('\u8be5\u7167\u7247\u4e0d\u652f\u6301\u626b\u7801\u8bc6\u522b');
+      toast.warning('该照片不支持扫码识别');
       return;
     }
     var self = this;
@@ -191,14 +191,17 @@ const barcodeScanner = {
       return;
     }
     document.getElementById('scannerOverlay').classList.add('open');
+    var manualBtn = document.getElementById('scannerManualBtn');
+    if (manualBtn) manualBtn.onclick = function() { self.close(); };
 
     try {
       this._scanner = new Html5Qrcode('scannerContainer');
       await this._scanner.start(
         { facingMode: 'environment' },
-        { fps: 10, qrbox: { width: 250, height: 150 } },
+        { fps: 15 },
         function(decodedText) {
-          // Success - fill the input and close
+          // Haptic feedback on success
+          try { navigator.vibrate(100); } catch (e) {}
           var input = document.getElementById(self._targetInputId);
           if (input) {
             input.value = decodedText;
@@ -211,7 +214,7 @@ const barcodeScanner = {
       );
     } catch (e) {
       console.error('Scanner error:', e);
-      toast.error('无法启动摄像头，请检查权限');
+      toast.error('无法启动摄像头，请确认已允许相机权限');
       document.getElementById('scannerOverlay').classList.remove('open');
     }
   },
@@ -219,13 +222,40 @@ const barcodeScanner = {
   async close() {
     if (this._scanner) {
       try { await this._scanner.stop(); } catch (e) {}
+      try { await this._scanner.clear(); } catch (e) {}
       this._scanner = null;
     }
     this._targetInputId = null;
     document.getElementById('scannerOverlay').classList.remove('open');
+  },
+
+  async detectFromPhoto(fieldName, targetInputId) {
+    var dataUrl = document.getElementById(fieldName + '-data').value;
+    if (!dataUrl) return;
+    try {
+      var parts = dataUrl.split(',');
+      var mime = parts[0].match(/:(.*?);/)[1];
+      var bytes = atob(parts[1]);
+      var ab = new ArrayBuffer(bytes.length);
+      var ia = new Uint8Array(ab);
+      for (var i = 0; i < bytes.length; i++) ia[i] = bytes.charCodeAt(i);
+      var blob = new Blob([ab], { type: mime });
+      var file = new File([blob], 'scan.jpg', { type: mime });
+      var reader = new Html5Qrcode('scannerManualBtn');
+      try {
+        var result = await reader.scanFile(file, false);
+        if (result) {
+          var input = document.getElementById(targetInputId);
+          if (input && !input.value.trim()) {
+            input.value = result;
+            toast.success('从照片中识别到条码: ' + result);
+          }
+        }
+      } catch (e) { /* no barcode in image */ }
+      try { reader.clear(); } catch(e) {}
+    } catch (e) { /* ignore parse errors */ }
   }
 };
-
 
 /* ========== OCR 识别模块 ========== */
 const ocr = {
@@ -652,9 +682,14 @@ function setupPhotoUpload(fieldName, targetInputId) {
         upload.insertBefore(img, upload.firstChild);
       }
       if (targetInputId) {
-        const targetInput = document.getElementById(targetInputId);
+        var targetInput = document.getElementById(targetInputId);
         if (targetInput && !targetInput.value.trim()) {
-          await ocr.recognizeFromImage(dataUrl, targetInputId, 'ocr-preview-' + fieldName, fieldName);
+          // 先尝试从照片中梟索条码（更可靠）
+          await barcodeScanner.detectFromPhoto(fieldName, targetInputId);
+          // 如果输入仍为空，再尝试OCR
+          if (!targetInput.value.trim()) {
+            await ocr.recognizeFromImage(dataUrl, targetInputId, 'ocr-preview-' + fieldName, fieldName);
+          }
         }
       }
     } catch (err) {

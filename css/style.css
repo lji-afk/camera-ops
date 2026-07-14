@@ -482,19 +482,48 @@ textarea.form-control { resize: vertical; min-height: 60px; }
   justify-content: center;
   pointer-events: none;
 }
-.scanner-frame {
-  width: 70%;
-  max-width: 280px;
-  aspect-ratio: 5/3;
-  border: 2px solid rgba(255,255,255,0.6);
-  border-radius: 12px;
+.scanner-frame2 {
+  width: 80%;
+  max-width: 300px;
+  height: 120px;
+  border: 2px solid rgba(255,255,255,0.5);
+  border-radius: 8px;
   box-shadow: 0 0 0 999px rgba(0,0,0,0.4);
+  position: relative;
+}
+.scanner-frame2::before,
+.scanner-frame2::after {
+  content: "";
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  border-color: #4ade80;
+  border-style: solid;
+}
+.scanner-frame2::before {
+  top: -1px; left: -1px;
+  border-width: 3px 0 0 3px;
+  border-radius: 4px 0 0 0;
+}
+.scanner-frame2::after {
+  top: -1px; right: -1px;
+  border-width: 3px 3px 0 0;
+  border-radius: 0 4px 0 0;
 }
 .scanner-hint {
   color: rgba(255,255,255,0.7);
   font-size: 14px;
   margin-top: 20px;
   text-align: center;
+}
+.scanner-subhint {
+  color: rgba(255,255,255,0.5);
+  font-size: 13px;
+  margin-top: 16px;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* 全屏图片查看器 */

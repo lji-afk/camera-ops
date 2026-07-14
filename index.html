@@ -99,8 +99,9 @@ if ("serviceWorker" in navigator) {
   <div class="scanner-body">
     <div id="scannerContainer"></div>
     <div class="scanner-guide">
-      <div class="scanner-frame"></div>
-      <p class="scanner-hint">将条码对准框内自动识别</p>
+      <div class="scanner-frame2"></div>
+      <p class="scanner-hint">将条码对准摄像头即可自动识别</p>
+      <p class="scanner-subhint">扫不到？<button id="scannerManualBtn" class="btn btn-outline" style="display:inline;width:auto;padding:6px 14px;margin-left:6px;font-size:13px;border-color:rgba(255,255,255,0.4);color:rgba(255,255,255,0.8);" onclick="barcodeScanner.close()">手动输入</button></p>
     </div>
   </div>
 </div>
