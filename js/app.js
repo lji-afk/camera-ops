@@ -183,7 +183,7 @@ const ocr = {
       return null;
     }
     try {
-      this._worker = await Tesseract.createWorker('chi_sim+eng', 1, {
+      this._worker = await Tesseract.createWorker('eng', 1, {
         logger: (m) => {
           const el = document.querySelector('.ocr-progress');
           if (el && m.status === 'recognizing text') {
@@ -199,33 +199,134 @@ const ocr = {
     }
   },
 
-  async recognizeFromImage(dataUrl, targetInputId, previewId) {
-    const worker = await this._getWorker();
-    if (!worker) return;
-    const loadingEl = document.getElementById('ocr-loading-' + targetInputId);
-    const previewEl = document.getElementById(previewId);
+  // 图片预处理：灰度化 + 增强对比度，提高识别率
+  _preprocessImage(dataUrl) {
+    return new Promise((resolve) => {
+      var img = new Image();
+      img.onload = function() {
+        var canvas = document.createElement('canvas');
+        var ctx = canvas.getContext('2d');
+        var w = img.width, h = img.height;
+        // 缩小到合理尺寸加速识别
+        var maxDim = 1200;
+        if (w > maxDim || h > maxDim) {
+          if (w > h) { h = h * maxDim / w; w = maxDim; }
+          else { w = w * maxDim / h; h = maxDim; }
+        }
+        canvas.width = w;
+        canvas.height = h;
+        ctx.drawImage(img, 0, 0, w, h);
+
+        // 获取像素数据做增强
+        var imageData = ctx.getImageData(0, 0, w, h);
+        var data = imageData.data;
+        // 统计像素亮度分布
+        var minVal = 255, maxVal = 0;
+        for (var i = 0; i < data.length; i += 4) {
+          var gray = 0.299 * data[i] + 0.587 * data[i+1] + 0.114 * data[i+2];
+          data[i] = gray;
+          data[i+1] = gray;
+          data[i+2] = gray;
+          if (gray < minVal) minVal = gray;
+          if (gray > maxVal) maxVal = gray;
+        }
+        // 拉伸对比度
+        var range = maxVal - minVal;
+        if (range > 10) {
+          for (var j = 0; j < data.length; j += 4) {
+            var px = (data[j] - minVal) / range * 255;
+            data[j] = px;
+            data[j+1] = px;
+            data[j+2] = px;
+          }
+        }
+        ctx.putImageData(imageData, 0, 0);
+        resolve(canvas.toDataURL('image/jpeg', 0.9));
+      };
+      img.src = dataUrl;
+    });
+  },
+
+  // 从文本中提取可能的SN码
+  _extractCodes(text) {
+    if (!text) return [];
+    var candidates = [];
+    // 1. 尝试匹配连续字母数字组合（SN码常见格式）
+    var matches = text.match(/[A-Za-z0-9]{6,}/g) || [];
+    matches.forEach(function(m) { candidates.push(m); });
+    // 2. 尝试匹配含连字符/下划线的编码
+    var matches2 = text.match(/[A-Za-z0-9\-_/]{8,}/g) || [];
+    matches2.forEach(function(m) { candidates.push(m); });
+    // 去重，按长度排序（SN码通常较长）
+    var unique = [];
+    candidates.forEach(function(c) {
+      if (unique.indexOf(c) === -1) unique.push(c);
+    });
+    unique.sort(function(a, b) { return b.length - a.length; });
+    return unique;
+  },
+
+  async recognizeFromImage(dataUrl, targetInputId, previewId, fieldName) {
+    var self = this;
+    var loadingEl = document.getElementById('ocr-loading-' + targetInputId);
+    var previewEl = document.getElementById(previewId);
     if (loadingEl) loadingEl.classList.add('show');
     if (previewEl) previewEl.classList.remove('show');
     try {
-      const { data } = await worker.recognize(dataUrl);
-      const text = data.text.trim();
-      const codes = text.match(/[A-Za-z0-9\-_/]{6,}/g) || [];
-      const bestCode = codes.sort((a,b) => b.length - a.length)[0] || text.slice(0, 50);
-      const input = document.getElementById(targetInputId);
-      if (input) {
-        input.value = bestCode;
-        input.dispatchEvent(new Event('input', { bubbles: true }));
-      }
+      // 预处理图片
+      var processedUrl = await this._preprocessImage(dataUrl);
+      var worker = await this._getWorker();
+      if (!worker) return;
+      var result = await worker.recognize(processedUrl);
+      var text = result.data.text.trim();
+      var codes = this._extractCodes(text);
+
+      // 显示识别结果供用户确认
       if (previewEl) {
-        previewEl.querySelector('.ocr-text').textContent = text.slice(0, 200);
+        var html = '';
+        if (codes.length > 0) {
+          html += '<div class="ocr-codes">';
+          codes.forEach(function(code, idx) {
+            var active = idx === 0 ? ' active' : '';
+            html += '<button type="button" class="ocr-code-btn' + active + '" onclick="ocr.selectCode(\'' + code.replace(/'/g, "\\'") + '\', \'' + targetInputId + '\', this)">' + code + '</button>';
+          });
+          html += '</div>';
+        }
+        html += '<div class="ocr-raw"><div class="ocr-label">原始识别文本：</div><div class="ocr-text">' + escHtml(text.slice(0, 300)) + '</div></div>';
+        html += '<div class="ocr-actions"><button type="button" class="btn btn-outline" style="font-size:12px;padding:6px;" onclick="ocr.retry(\'' + fieldName + '\', \'' + targetInputId + '\', \'' + previewId + '\')">重新识别</button></div>';
+        previewEl.innerHTML = html;
         previewEl.classList.add('show');
+        // 自动选中第一个候选码
+        if (codes.length > 0) {
+          document.getElementById(targetInputId).value = codes[0];
+        }
       }
-      toast.success('OCR识别完成');
+      toast.success('识别完成，请确认结果');
     } catch (e) {
       console.error('OCR error:', e);
       toast.error('识别失败，请重试或手动输入');
     } finally {
       if (loadingEl) loadingEl.classList.remove('show');
+    }
+  },
+
+  selectCode(code, targetInputId, btn) {
+    document.getElementById(targetInputId).value = code;
+    // 高亮选中项
+    var parent = btn.parentNode;
+    if (parent) {
+      var siblings = parent.querySelectorAll('.ocr-code-btn');
+      siblings.forEach(function(s) { s.classList.remove('active'); });
+    }
+    btn.classList.add('active');
+  },
+
+  retry(fieldName, targetInputId, previewId) {
+    var dataUrl = document.getElementById(fieldName + '-data').value;
+    if (dataUrl) {
+      this.recognizeFromImage(dataUrl, targetInputId, previewId, fieldName);
+    } else {
+      toast.warning('\u8bf7\u5148\u62cd\u6444\u6216\u9009\u62e9\u7167\u7247');
     }
   }
 };
@@ -480,7 +581,7 @@ function setupPhotoUpload(fieldName, targetInputId) {
       if (targetInputId) {
         const targetInput = document.getElementById(targetInputId);
         if (targetInput && !targetInput.value.trim()) {
-          await ocr.recognizeFromImage(dataUrl, targetInputId, 'ocr-preview-' + fieldName);
+          await ocr.recognizeFromImage(dataUrl, targetInputId, 'ocr-preview-' + fieldName, fieldName);
         }
       }
     } catch (err) {
@@ -498,7 +599,7 @@ function handleOCR(fieldName) {
   else if (fieldName === 'ontPhoto') targetInputId = 'ontSN';
   else if (fieldName === 'cabinetPhoto') targetInputId = 'cabinetCode';
   else { toast.warning('\u8be5\u7167\u7247\u6682\u4e0d\u652f\u6301\u81ea\u52a8\u8bc6\u522b'); return; }
-  ocr.recognizeFromImage(dataUrl, targetInputId, 'ocr-preview-' + fieldName);
+  ocr.recognizeFromImage(dataUrl, targetInputId, 'ocr-preview-' + fieldName, fieldName);
 }
 
 function handleClearPhoto(fieldName) {

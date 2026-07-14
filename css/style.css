@@ -381,24 +381,43 @@ textarea.form-control { resize: vertical; min-height: 60px; }
   to { opacity: 1; transform: translateY(0); }
 }
 .ocr-preview {
-  background: #fefce8;
-  border: 1px solid #fde68a;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
   border-radius: 6px;
-  padding: 8px 12px;
+  padding: 10px 12px;
   font-size: 13px;
   margin-top: 6px;
   display: none;
 }
 .ocr-preview.show { display: block; }
-.ocr-preview .ocr-label { font-weight: 500; color: var(--warning); }
-.ocr-preview .ocr-text { font-family: monospace; color: var(--text); margin-top: 2px; word-break: break-all; }
+.ocr-preview .ocr-label { font-weight: 500; color: var(--text-secondary); font-size: 12px; margin-bottom: 4px; }
+.ocr-preview .ocr-text { font-family: monospace; color: var(--text); font-size: 12px; word-break: break-all; line-height: 1.4; }
+.ocr-preview .ocr-codes { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.ocr-preview .ocr-raw { margin-bottom: 6px; }
+.ocr-preview .ocr-actions { margin-top: 6px; }
+.ocr-code-btn {
+  padding: 6px 12px;
+  border: 1px solid var(--primary);
+  border-radius: 4px;
+  background: #fff;
+  color: var(--primary);
+  font-size: 13px;
+  font-family: monospace;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.ocr-code-btn.active {
+  background: var(--primary);
+  color: #fff;
+}
+.ocr-code-btn:active { opacity: 0.8; }
 .ocr-loading {
   display: none;
   align-items: center;
   gap: 8px;
   padding: 8px 0;
   font-size: 13px;
-  color: var(--text-secondary);
+  color: var(--primary);
 }
 .ocr-loading.show { display: flex; }
 .spinner {
