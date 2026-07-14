@@ -1,12 +1,12 @@
 const CACHE = 'camera-ops-v1';
 const URLS = [
-  '/',
-  '/index.html',
-  '/css/style.css',
-  '/js/app.js',
-  '/img/icon-192.png',
-  '/img/icon-512.png',
-  '/manifest.json'
+  './',
+  './index.html',
+  './css/style.css',
+  './js/app.js',
+  './img/icon-192.png',
+  './img/icon-512.png',
+  './manifest.json'
 ];
 
 self.addEventListener('install', (e) => {
